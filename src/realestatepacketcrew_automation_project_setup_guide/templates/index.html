@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🏡 DarkMode Packet Assistant</title>
+  <!-- GitHub-style Markdown CSS -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown-dark.min.css">
+  <style>
+    :root {
+      --bg: #121212; --surface: #1f1f1f; --accent: #03dac6;
+      --text: #e0e0e0; --muted: #757575; --radius: 8px;
+    }
+    * { box-sizing: border-box; margin:0; padding:0 }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      display:flex; justify-content:center;
+      padding:2rem;
+    }
+    .container {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+      max-width:800px; width:100%; overflow:hidden;
+    }
+    header { background: var(--accent); padding:1.5rem; text-align:center; }
+    header h1 { color: var(--bg); font-size:1.75rem; }
+    .content { padding:1.5rem; display:grid; gap:1.5rem; }
+    fieldset { border:none; display:grid; gap:1rem; }
+    legend { color: var(--accent); font-weight:bold; }
+    label { font-size:0.9rem; color: var(--muted); }
+    input, textarea, select {
+      width:100%; padding:0.75rem; border:none;
+      border-radius:var(--radius);
+      background:#2a2a2a; color:var(--text);
+    }
+    input:focus, textarea:focus {
+      outline:2px solid var(--accent); background:#333;
+    }
+    button {
+      padding:0.75rem 1.5rem;
+      background:var(--accent);
+      color: var(--bg);
+      border:none; border-radius:var(--radius);
+      cursor:pointer; font-size:1rem;
+    }
+    button:disabled { background:var(--muted); cursor:not-allowed; }
+    button:hover:not(:disabled) { background:#00ffe7; }
+    .listings { display:flex; flex-direction:column; gap:1rem; }
+    .listing-item {
+      background: #2a2a2a; padding:1rem;
+      border-radius:var(--radius);
+      display:grid; grid-template-columns:1fr auto; gap:1rem;
+    }
+    .listing-item button {
+      background:#bb86fc; color:#121212;
+      border:none; border-radius:var(--radius);
+      padding:0.4rem 0.6rem; cursor:pointer;
+    }
+    .spinner {
+      width:48px; height:48px;
+      border:6px solid var(--muted);
+      border-top:6px solid var(--accent);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+      margin:2rem auto;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .result-box {
+      display:none;
+      background: var(--surface);
+      padding:1rem;
+      border-radius:var(--radius);
+      margin-top:1rem;
+      max-height:400px;
+      overflow:auto;
+    }
+    /* use GitHub markdown styling inside .result-box */
+    .result-box { margin-bottom:2rem; }
+  </style>
+</head>
+<body class="markdown-body">
+  <div class="container">
+    <header><h1>DarkMode Packet Assistant</h1></header>
+    <div class="content">
+      <fieldset>
+        <legend>Client Preferences</legend>
+        <label>Name</label>
+        <input type="text" id="client_name" placeholder="e.g. Jane Doe" />
+
+        <label>Budget Range</label>
+        <input type="text" id="budget" placeholder="$500k–$800k" />
+
+        <label>Neighborhood</label>
+        <input type="text" id="neighborhood" placeholder="Downtown" />
+
+        <label>Bedrooms</label>
+        <input type="number" id="bedrooms" min="1" />
+
+        <label>Move-in Timing</label>
+        <input type="text" id="timing" placeholder="Within 3 months" />
+      </fieldset>
+
+      <fieldset>
+        <legend>MLS Listings</legend>
+        <div class="listings" id="listingsContainer"></div>
+        <button type="button" id="addListingBtn">+ Add Listing</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Showing Windows</legend>
+        <select id="windows" multiple size="3">
+          <option>Morning</option>
+          <option>Afternoon</option>
+          <option>Evening</option>
+        </select>
+      </fieldset>
+
+      <button id="generateBtn">Generate Packet</button>
+      <div id="loading" style="display:none;"><div class="spinner"></div></div>
+      <div class="result-box" id="resultBox"></div>
+    </div>
+  </div>
+
+  <!-- marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    const listingsContainer = document.getElementById("listingsContainer");
+    const addListingBtn     = document.getElementById("addListingBtn");
+    const generateBtn       = document.getElementById("generateBtn");
+    const loading           = document.getElementById("loading");
+    const resultBox         = document.getElementById("resultBox");
+
+    function addListing(){
+      const idx = listingsContainer.children.length;
+      const div = document.createElement("div");
+      div.className = "listing-item";
+      div.innerHTML = `
+        <div>
+          <label>Address</label>
+          <input type="text" name="address_${idx}" placeholder="123 Main St" />
+
+          <label>Price</label>
+          <input type="text" name="price_${idx}" placeholder="$350k" />
+
+          <label>Summary</label>
+          <textarea name="summary_${idx}" rows="2"></textarea>
+
+          <label>Availability</label>
+          <input type="text" name="avail_${idx}" placeholder="Sat 2–4PM" />
+        </div>
+        <button type="button">✕</button>
+      `;
+      div.querySelector("button").onclick = () => div.remove();
+      listingsContainer.appendChild(div);
+    }
+
+    addListingBtn.onclick = addListing;
+    // start with one listing row:
+    addListing();
+
+    generateBtn.onclick = async () => {
+      generateBtn.disabled = true;
+      loading.style.display = "block";
+      resultBox.style.display = "none";
+
+      const data = {
+        client_name:  document.getElementById("client_name").value,
+        budget:       document.getElementById("budget").value,
+        neighborhood: document.getElementById("neighborhood").value,
+        bedrooms:     parseInt(document.getElementById("bedrooms").value),
+        timing:       document.getElementById("timing").value,
+        listings:     [],
+        showing_windows: Array.from(
+          document.getElementById("windows").selectedOptions
+        ).map(o => o.value)
+      };
+
+      // gather each listing’s inputs
+      document.querySelectorAll(".listing-item").forEach(div => {
+        const [addr, price, summary, avail] =
+          div.querySelectorAll("input, textarea");
+        data.listings.push({
+          address:     addr.value,
+          price:       price.value,
+          summary:     summary.value,
+          availability: avail.value
+        });
+      });
+
+      try {
+        const res = await fetch("/api/run", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify(data)
+        });
+        const { output, error } = await res.json();
+        if (error) {
+          resultBox.textContent = `Error: ${error}`;
+        } else {
+          // render raw Markdown
+          resultBox.innerHTML = marked.parse(output);
+        }
+        resultBox.style.display = "block";
+      } catch (e) {
+        resultBox.textContent = "Error: " + e.message;
+        resultBox.style.display = "block";
+      } finally {
+        loading.style.display = "none";
+        generateBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

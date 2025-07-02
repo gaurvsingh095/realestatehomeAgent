@@ -1,0 +1,44 @@
+---
+validate_and_normalize_inputs:
+  description: Validate and normalize incoming JSON form and listing data for {client_name},
+    {budget}, {neighborhood}, {bedrooms}, and {timing}.
+  expected_output: Cleaned and normalized data ready for processing.
+  async_execution: false
+  agent: inputparser
+fetch_and_parse_listings:
+  description: Fetch and parse details from each MLS listing URL to extract address,
+    price, summary, and availability for {client_name}.
+  expected_output: Extracted address, price, summary, and availability for each listing.
+  async_execution: false
+  agent: listingfetcher
+annotate_and_rank_listings:
+  description: Annotate and rank listings based on {client_name}'s budget, neighborhood,
+    and bedroom preferences.
+  expected_output: Sorted and annotated listings.
+  async_execution: false
+  agent: listingorganizer
+  context:
+  - fetch_and_parse_listings
+build_showing_schedule:
+  description: Build an optimal showing schedule for {client_name}'s chosen showing
+    windows, minimizing travel time between addresses.
+  expected_output: Optimized multi-stop schedule.
+  async_execution: false
+  agent: scheduleoptimizer
+  context:
+  - annotate_and_rank_listings
+format_into_pdf:
+  description: Format the sorted listings and schedule into a single PDF document
+    for {client_name}.
+  expected_output: A clean, formatted PDF document.
+  async_execution: false
+  agent: templateformatter
+  context:
+  - build_showing_schedule
+export_packet:
+  description: Export the final PDF as bytes or a download URL for {client_name}.
+  expected_output: PDF bytes or download URL.
+  async_execution: false
+  agent: export
+  context:
+  - format_into_pdf
